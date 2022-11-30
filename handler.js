@@ -84,9 +84,11 @@ async function spotify_idtodata(id) {
       const imgurl = document
         .getElementsByTagName("section")[0]
         .childNodes[0].getElementsByTagName("img")[0].src;
+      const time = document.getElementsByTagName("time")[0].dateTime;
       return {
         songname: songname,
         imgurl: imgurl,
+        time: time,
       };
     });
 

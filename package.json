@@ -1,0 +1,11 @@
+{
+  "name": "chordscrap-puppeteer",
+  "version": "1.0.0",
+  "description": "",
+  "dependencies": {
+    "@sparticuz/chromium": "^108.0.1",
+    "express": "^4.17.1",
+    "puppeteer-core": "^19.3.0",
+    "serverless-http": "^2.7.0"
+  }
+}

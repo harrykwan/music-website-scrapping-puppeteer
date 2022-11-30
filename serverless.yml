@@ -1,0 +1,16 @@
+org: harrykwan
+app: chordsheet-scrapping
+service: chordscrap-puppeteer
+frameworkVersion: "2 || 3"
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  memorySize: 2048
+  timeout: 29
+
+functions:
+  api:
+    handler: handler.handler
+    events:
+      - httpApi: "*"

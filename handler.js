@@ -62,7 +62,7 @@ async function getpage_91pu(url) {
 async function spotify_idtodata(id) {
   try {
     const browser = await puppeteer.launch({
-      args: chromium.args,
+      args: [...chromium.args, "--disable-web-security"],
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath,
       headless: chromium.headless,
@@ -74,23 +74,31 @@ async function spotify_idtodata(id) {
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4668.0 Safari/537.36"
     );
 
-    await page.goto("https://open.spotify.com/track/" + id);
-    await page.waitForNetworkIdle();
-
-    const result = await page.evaluate(() => {
-      const songname = document
-        .getElementsByTagName("section")[0]
-        .childNodes[0].innerText.split("\n")[1];
-      const imgurl = document
-        .getElementsByTagName("section")[0]
-        .childNodes[0].getElementsByTagName("img")[0].src;
-      const time = document.getElementsByTagName("time")[0].dateTime;
-      return {
-        songname: songname,
-        imgurl: imgurl,
-        time: time,
-      };
-    });
+    async function waitForNetworkResponse() {
+      return new Promise(async (resolve, reject) => {
+        await page.setRequestInterception(true);
+        page.on("request", (interceptedRequest) => {
+          interceptedRequest.continue();
+        });
+        page.on("response", async (response) => {
+          const url = response.url();
+          if (url.indexOf("operationName=getTrack") != -1) {
+            console.log(url);
+            let temp = await response.json();
+            temp = temp.data;
+            const tempformatted = {
+              name: temp.trackUnion.albumOfTrack.name,
+              date: temp.trackUnion.albumOfTrack.date.isoString,
+              image: temp.trackUnion.albumOfTrack.coverArt.sources[0],
+              playcount: temp.trackUnion.playcount,
+            };
+            resolve(tempformatted);
+          }
+        });
+        await page.goto("https://open.spotify.com/track/" + id);
+      });
+    }
+    const result = await waitForNetworkResponse();
 
     await browser.close();
     return result;

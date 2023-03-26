@@ -4,8 +4,10 @@
   "description": "",
   "dependencies": {
     "@sparticuz/chromium": "^108.0.1",
+    "axios": "^1.3.4",
     "express": "^4.17.1",
     "puppeteer-core": "^19.3.0",
-    "serverless-http": "^2.7.0"
+    "serverless-http": "^2.7.0",
+    "x-ray": "^2.3.4"
   }
 }

@@ -3,6 +3,9 @@ const express = require("express");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 const app = express();
+const axios = require("axios");
+var Xray = require("x-ray");
+var x = Xray();
 
 async function getpage_91pu(url) {
   let browser = null;
@@ -129,12 +132,18 @@ async function soundcloud_idtodata(id) {
       const songname = document
         .getElementById("content")
         .innerText.split("\n")[1];
-      const imgurl = document
-        .getElementById("content")
-        .getElementsByClassName("image")[0]
-        .childNodes[1].style.backgroundImage.split('url("')[1]
-        .split('")')[0];
-      const time = document.getElementsByTagName("time")[0].dateTime;
+      let imgurl = "";
+      let time;
+      try {
+        imgurl = document
+          .getElementById("content")
+          .getElementsByClassName("image")[0]
+          .childNodes[1].style.backgroundImage.split('url("')[1]
+          .split('")')[0];
+      } catch (e) {}
+      try {
+        time = document.getElementsByTagName("time")[0].dateTime;
+      } catch (e) {}
       return {
         songname: songname,
         imgurl: imgurl,
@@ -147,6 +156,71 @@ async function soundcloud_idtodata(id) {
   } catch (error) {
     return "puppeteer error: " + error;
   }
+}
+
+async function soundcloud_idtodata_fast(id) {
+  const response = await axios.get("https://soundcloud.com/" + id);
+
+  const image = response.data
+    .split("background-image")[1]
+    .split("(")[1]
+    .split(")")[0];
+
+  return new Promise((resolve, reject) => {
+    x("https://soundcloud.com/" + id, {
+      main: "h1",
+      time: "time",
+      icon: "img@src",
+    })(function (err, obj) {
+      resolve({ ...obj, image: image });
+    });
+  });
+}
+
+async function spotify_idtodata_fast(id) {
+  const tokenres = await axios.get("https://open.spotify.com/get_access_token");
+  const { accessToken } = tokenres.data;
+  console.log(accessToken);
+  const response = await axios.get("https://api.spotify.com/v1/tracks/" + id, {
+    headers: {
+      authority: "api-partner.spotify.com",
+      accept: "application/json",
+      "accept-language": "zh-TW",
+      "app-platform": "WebPlayer",
+      authorization: "Bearer " + accessToken,
+
+      "content-type": "application/json;charset=UTF-8",
+      origin: "https://open.spotify.com",
+      referer: "https://open.spotify.com/",
+      "sec-ch-ua":
+        '"Google Chrome";v="111", "Not(A:Brand";v="8", "Chromium";v="111"',
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": '"macOS"',
+      "sec-fetch-dest": "empty",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-site": "same-site",
+      "spotify-app-version": "1.2.9.81.gdd4d2082",
+      "user-agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
+    },
+  });
+
+  return {
+    name: response.data.name,
+    artist: response.data.artists[0].name,
+    image: response.data.album.images[0],
+    date: response.data.album.release_date,
+  };
+  // return new Promise((resolve, reject) => {
+  //   x("https://open.spotify.com/track/" + id, {
+  //     main: "h1",
+  //     time: "span",
+  //     image: "img@src",
+  //   })(function (err, obj) {
+  //     console.log(obj);
+  //     resolve(obj);
+  //   });
+  // });
 }
 
 app.get("/", (req, res, next) => {
@@ -171,6 +245,22 @@ app.get("/getpage", async (req, res, next) => {
   }
 });
 
+app.get("/spotify-token", async (req, res, next) => {
+  try {
+    const tokenres = await axios.get(
+      "https://open.spotify.com/get_access_token"
+    );
+    const { accessToken } = tokenres.data;
+    return res.status(200).json({
+      body: accessToken,
+    });
+  } catch (e) {
+    return res.status(200).json({
+      error: e.toString(),
+    });
+  }
+});
+
 app.get("/spotify", async (req, res, next) => {
   try {
     const result = await spotify_idtodata(req.query.id);
@@ -179,7 +269,7 @@ app.get("/spotify", async (req, res, next) => {
     });
   } catch (e) {
     return res.status(200).json({
-      error: e,
+      error: e.toString(),
     });
   }
 });
@@ -192,7 +282,33 @@ app.get("/soundcloud", async (req, res, next) => {
     });
   } catch (e) {
     return res.status(200).json({
-      error: e,
+      error: e.toString(),
+    });
+  }
+});
+
+app.get("/spotify-fast", async (req, res, next) => {
+  try {
+    const result = await spotify_idtodata_fast(req.query.id);
+    return res.status(200).json({
+      body: result,
+    });
+  } catch (e) {
+    return res.status(200).json({
+      error: e.toString(),
+    });
+  }
+});
+
+app.get("/soundcloud-fast", async (req, res, next) => {
+  try {
+    const result = await soundcloud_idtodata_fast(req.query.id);
+    return res.status(200).json({
+      body: result,
+    });
+  } catch (e) {
+    return res.status(200).json({
+      error: e.toString(),
     });
   }
 });
